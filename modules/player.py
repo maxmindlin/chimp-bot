@@ -115,12 +115,12 @@ class MusicModule(commands.Cog):
     @commands.command(name="pause")
     async def pause(self, ctx):
         if ctx.voice_client:
-            await ctx.voice_client.pause()
+            ctx.voice_client.pause()
 
     @commands.command(name="resume")
     async def resume(self, ctx):
         if ctx.voice_client:
-            await ctx.voice_client.resume()
+            ctx.voice_client.resume()
 
     @play.before_invoke
     async def ensure_voice(self, ctx):

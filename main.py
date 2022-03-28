@@ -8,6 +8,7 @@ from modules.greeter import GreeterModule
 from modules.player import MusicModule
 from modules.errors import CommandErrHandler
 from modules.betting import Bet, BettingModule
+from modules.wallet import WalletManager, WalletModule
 
 class ChimpBotClient(commands.Bot):
     
@@ -23,10 +24,12 @@ def main():
     intents.members = True
 
     bot = ChimpBotClient(command_prefix="$", intents=intents)
+    wallet = WalletManager()
     bot.add_cog(GreeterModule(bot))
     bot.add_cog(MusicModule(bot))
-    bot.add_cog(BettingModule(bot))
+    bot.add_cog(BettingModule(bot, wallet))
     bot.add_cog(CommandErrHandler(bot))
+    bot.add_cog(WalletModule(bot, wallet))
     bot.run(token)
 
 if __name__ == "__main__":
