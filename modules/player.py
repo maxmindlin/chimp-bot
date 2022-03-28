@@ -5,6 +5,8 @@ import discord
 import youtube_dl
 from discord.ext import commands, tasks
 
+from .embed import COLOUR
+
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -82,7 +84,7 @@ class MusicModule(commands.Cog):
             return
         player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
         ctx.voice_client.play(player, after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set))
-        embed = discord.Embed(title=f"Now playing: {player.title}", colour=0x87CEEB)
+        embed = discord.Embed(title=f"Now playing: {player.title}", colour=COLOUR)
         await ctx.send(embed=embed)
         await self.next.wait()
         
@@ -92,7 +94,7 @@ class MusicModule(commands.Cog):
     
     @commands.command(name="play")
     async def play(self, ctx, *, val):
-        embed = discord.Embed(title=f"Added to queue: {val}", colour=0x87CEEB)
+        embed = discord.Embed(title=f"Added to queue: {val}", colour=COLOUR)
         await ctx.send(embed=embed)
         await self.queue.put((ctx, val))
     
@@ -101,7 +103,7 @@ class MusicModule(commands.Cog):
         if name is None:
             ctx.voice_client.stop()
         else:
-            embed = discord.Embed(title=f"Added to skips: {name}", colour=0x87CEEB)
+            embed = discord.Embed(title=f"Added to skips: {name}", colour=COLOUR)
             await ctx.send(embed=embed)
             self.skips.add(name)
 
@@ -126,6 +128,6 @@ class MusicModule(commands.Cog):
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
             else:
-                embed = discord.Embed(title="You are not connected to a voice channel.", colour=0x87CEEB)
+                embed = discord.Embed(title="You are not connected to a voice channel.", colour=COLOUR)
                 await ctx.send(embed=embed)
                 raise commands.CommandError("Author not connected to a voice channel.")

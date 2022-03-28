@@ -7,6 +7,7 @@ import os
 from modules.greeter import GreeterModule
 from modules.player import MusicModule
 from modules.errors import CommandErrHandler
+from modules.betting import Bet, BettingModule
 
 class ChimpBotClient(commands.Bot):
     
@@ -24,6 +25,7 @@ def main():
     bot = ChimpBotClient(command_prefix="$", intents=intents)
     bot.add_cog(GreeterModule(bot))
     bot.add_cog(MusicModule(bot))
+    bot.add_cog(BettingModule(bot))
     bot.add_cog(CommandErrHandler(bot))
     bot.run(token)
 
