@@ -7,6 +7,8 @@ from discord.ext import commands, tasks
 
 from .embed import COLOUR
 
+PREMIUM_COST = 20
+
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
 
@@ -67,10 +69,12 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(data['url']), data=data, requester=requester)
 
 class MusicModule(commands.Cog):
-    def __init__(self, bot) -> None:
+    def __init__(self, bot, wallet) -> None:
         super().__init__()
         self.bot = bot
+        self.wallet = wallet
         self.queue = asyncio.Queue()
+        self.payed_queue = asyncio.Queue()
         self.next = asyncio.Event()
         self.play_loop.start()
         self.skips = set()
@@ -78,7 +82,10 @@ class MusicModule(commands.Cog):
     @tasks.loop()
     async def play_loop(self):
         self.next.clear()
-        (ctx, url) = await self.queue.get()
+        if self.payed_queue.empty():
+            (ctx, url) = await self.queue.get()
+        else:
+            (ctx, url) = await self.payed_queue.get()
         if url in self.skips:
             self.skips.remove(url)
             return
@@ -97,6 +104,20 @@ class MusicModule(commands.Cog):
         embed = discord.Embed(title=f"Added to queue: {val}", colour=COLOUR)
         await ctx.send(embed=embed)
         await self.queue.put((ctx, val))
+    
+    @commands.command(name="p-play")
+    async def premium_pay(self, ctx, *, val):
+        user = ctx.author.id
+        try:
+            self.wallet.withdraw(user, PREMIUM_COST)
+            embed = discord.Embed(title=f"{user} paid to add to the premium queue: {val}", colour=COLOUR)
+            embed.set_footer(text="This song will play before anything in the normal queue.")
+            await ctx.send(embed=embed)
+            await self.payed_queue.put((ctx, val))
+        except:
+            embed = discord.Embed(title="You cannot afford a premium play!", colour=COLOUR)
+            embed.set_footer(text=f"Premium plays cost {PREMIUM_COST}")
+            await ctx.send(embed=embed)
     
     @commands.command(name="skip")
     async def skip(self, ctx, *, name=None):
@@ -123,6 +144,7 @@ class MusicModule(commands.Cog):
             ctx.voice_client.resume()
 
     @play.before_invoke
+    @premium_pay.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:

@@ -151,8 +151,16 @@ class BettingModule(commands.Cog):
         if room.author != author:
             raise InvalidCommandUsage(f"Only the room creator {room.author_name} can declare a winner")
         
+        winning_outcome = msg
+        if msg not in room.outcomes:
+            try:
+                idx = int(msg)
+                winning_outcome = room.outcomes[idx - 1]
+            except:
+                raise InvalidCommandUsage("Winning outcome must be one of the possible outcomes")
+        
         total_bets = len(room.bets)
-        winners = room.winners(msg)
+        winners = room.winners(winning_outcome)
         total_winners = len(winners)
         ratio = 1
         if total_bets != 0:
@@ -162,10 +170,10 @@ class BettingModule(commands.Cog):
         for win in winners:
             amt = win.amount + win.amount * ratio
             amt = int(round(amt))
-            self.wallet.depost(win.player, amt)
+            self.wallet.deposit(win.player, amt)
             winners_list += f"• {win.player_name} ({amt})\n"
         
-        embed = discord.Embed(title=f"{msg} wins!")
+        embed = discord.Embed(title=f"{winning_outcome} wins!")
         embed.add_field(name="Winners", value=winners_list)
 
         del self.curr_bets[channel_id]

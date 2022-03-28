@@ -27,6 +27,9 @@ class NoWalletError(Exception):
 class WalletManager():
     """
     Manages the balances for all players.
+
+    TODO: there might be some async conflicts here.
+    Make sure the lock is used properly if these appear.
     """
     def __init__(self):
         self.balances = self.load_balances()

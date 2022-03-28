@@ -26,7 +26,7 @@ def main():
     bot = ChimpBotClient(command_prefix="$", intents=intents)
     wallet = WalletManager()
     bot.add_cog(GreeterModule(bot))
-    bot.add_cog(MusicModule(bot))
+    bot.add_cog(MusicModule(bot, wallet))
     bot.add_cog(BettingModule(bot, wallet))
     bot.add_cog(CommandErrHandler(bot))
     bot.add_cog(WalletModule(bot, wallet))
