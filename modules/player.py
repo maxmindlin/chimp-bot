@@ -5,7 +5,8 @@ import discord
 import youtube_dl
 from discord.ext import commands, tasks
 
-from .embed import COLOUR
+from modules.wallet import InsufficientFundsError, NoWalletError
+from modules.embed import COLOUR
 
 PREMIUM_COST = 20
 
@@ -106,17 +107,22 @@ class MusicModule(commands.Cog):
         await self.queue.put((ctx, val))
     
     @commands.command(name="p-play")
-    async def premium_pay(self, ctx, *, val):
+    async def premium_play(self, ctx, *, val):
         user = ctx.author.id
+        player_name = ctx.author.name
         try:
             self.wallet.withdraw(user, PREMIUM_COST)
-            embed = discord.Embed(title=f"{user} paid to add to the premium queue: {val}", colour=COLOUR)
+            embed = discord.Embed(title=f"{user} paid to add to the premium queue", description=val, colour=COLOUR)
             embed.set_footer(text="This song will play before anything in the normal queue.")
             await ctx.send(embed=embed)
             await self.payed_queue.put((ctx, val))
-        except:
+        except NoWalletError:
+            embed = discord.Embed(title=f"Cannot place bet", description=f"{player_name} does not have a Chimp-wallet yet!", color=COLOUR)
+            embed.set_footer(text="Type `$new-chimp-wallet` to get a wallet with some welcome Chimp-coins")
+            await ctx.send(embed=embed)
+        except InsufficientFundsError:
             embed = discord.Embed(title="You cannot afford a premium play!", colour=COLOUR)
-            embed.set_footer(text=f"Premium plays cost {PREMIUM_COST}")
+            embed.set_footer(text=f"Premium plays cost {PREMIUM_COST} Chimp-coins")
             await ctx.send(embed=embed)
     
     @commands.command(name="skip")
@@ -144,7 +150,7 @@ class MusicModule(commands.Cog):
             ctx.voice_client.resume()
 
     @play.before_invoke
-    @premium_pay.before_invoke
+    @premium_play.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:

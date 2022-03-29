@@ -1,12 +1,10 @@
-import asyncio
 from os.path import exists
 import discord
 from discord.ext import commands
 
 from modules.wallet import InsufficientFundsError, NoWalletError
-
-from .errors import InvalidCommandUsage
-from .embed import COLOUR
+from modules.errors import InvalidCommandUsage
+from modules.embed import COLOUR
 
 WALLET_FILE = "wallets.txt"
 
@@ -35,7 +33,7 @@ class BettingRoom:
 
         for b in self.bets:
             if bet.player == b.player:
-                raise InvalidBet(f"{bet.player} has already placed a bet!")
+                raise InvalidBet(f"{bet.player_name} has already placed a bet!")
 
         if bet.outcome not in self.outcomes:
             try:
@@ -107,17 +105,17 @@ class BettingModule(commands.Cog):
                 embed = discord.Embed(title=f"Bet placed by {player_name}: {bet.outcome} for {bet.amount}", color=COLOUR)
                 await ctx.send(embed=embed)
             except InvalidBet as e:
-                embed = discord.Embed(title=f"Invalid bet: {e}", color=COLOUR)
+                embed = discord.Embed(title="Invalid bet", description=e, color=COLOUR)
                 await ctx.send(embed=embed)
                 return
             except NoWalletError:
                 embed = discord.Embed(title=f"Cannot place bet: {player_name} does not have a Chimp-wallet yet!", color=COLOUR)
-                embed.set_footer(text="Type `$new-chimp-wallet` to get a wallet with some welcome Chimp-coins")
+                embed.set_footer(text="Type `$new-wallet` to get a wallet with some welcome Chimp-coins")
                 await ctx.send(embed=embed)
                 return
             except InsufficientFundsError:
                 embed = discord.Embed(title=f"Cannot accept bet from {player_name} - you do not have that much Chimp-coin", color=COLOUR)
-                embed.set_footer(text="Type `$wallet-balance` to see how much you have")
+                embed.set_footer(text="Type `$balance` to see how much you have")
                 await ctx.send(embed=embed)
                 return
             except Exception as e:
@@ -136,7 +134,7 @@ class BettingModule(commands.Cog):
         else:
             curr = self.curr_bets[channel_id].title
             ops = self.curr_bets[channel_id].outcomes
-            embed = discord.Embed(title=f"Current bet: {curr}", color=COLOUR)
+            embed = discord.Embed(title="Current bet", description=curr, color=COLOUR)
             embed.set_footer(text=f"Bet options: {ops}")
             await ctx.send(embed=embed)
     

@@ -101,8 +101,10 @@ class WalletModule(commands.Cog):
             embed.set_footer(text="Type `$new-wallet` to get a wallet with some welcome Chimp-coins")
             await ctx.send(embed=embed)
             return
+        
+        dm = self.bot.get_user(player) or await self.bot.fetch_user(player)
         embed = discord.Embed(title=f"{name} you have a balance of {balance} Chimp-coins", color=COLOUR)
-        await ctx.send(embed=embed)
+        await dm.send(embed=embed)
     
     @commands.command(name="new-wallet")
     async def new_wallet(self, ctx):
