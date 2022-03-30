@@ -74,25 +74,21 @@ class MusicModule(commands.Cog):
         super().__init__()
         self.bot = bot
         self.wallet = wallet
-        self.queue = asyncio.Queue()
-        self.payed_queue = asyncio.Queue()
+        self.queue = asyncio.PriorityQueue()
         self.next = asyncio.Event()
         self.play_loop.start()
-        self.skips = set()
+        self.skips = set()  
 
     @tasks.loop()
     async def play_loop(self):
         self.next.clear()
-        if self.payed_queue.empty():
-            (ctx, url) = await self.queue.get()
-        else:
-            (ctx, url) = await self.payed_queue.get()
+        (_, (ctx, url)) = await self.queue.get()
         if url in self.skips:
             self.skips.remove(url)
             return
         player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
         ctx.voice_client.play(player, after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set))
-        embed = discord.Embed(title=f"Now playing: {player.title}", colour=COLOUR)
+        embed = discord.Embed(title="Now playing", description=player.title, colour=COLOUR)
         await ctx.send(embed=embed)
         await self.next.wait()
         
@@ -102,9 +98,9 @@ class MusicModule(commands.Cog):
     
     @commands.command(name="play")
     async def play(self, ctx, *, val):
-        embed = discord.Embed(title=f"Added to queue: {val}", colour=COLOUR)
+        embed = discord.Embed(title="Added to queue", desciption=val, colour=COLOUR)
         await ctx.send(embed=embed)
-        await self.queue.put((ctx, val))
+        await self.queue.put((10, (ctx, val)))
     
     @commands.command(name="p-play")
     async def premium_play(self, ctx, *, val):
@@ -112,10 +108,10 @@ class MusicModule(commands.Cog):
         player_name = ctx.author.name
         try:
             self.wallet.withdraw(user, PREMIUM_COST)
-            embed = discord.Embed(title=f"{user} paid to add to the premium queue", description=val, colour=COLOUR)
-            embed.set_footer(text="This song will play before anything in the normal queue.")
+            embed = discord.Embed(title=f"{player_name} paid to add to the premium queue", description=f"Sone: {val}", colour=COLOUR)
+            embed.set_footer(text="This song has been bumped to the front of the queue.")
             await ctx.send(embed=embed)
-            await self.payed_queue.put((ctx, val))
+            await self.queue.put((0, (ctx, val)))
         except NoWalletError:
             embed = discord.Embed(title=f"Cannot place bet", description=f"{player_name} does not have a Chimp-wallet yet!", color=COLOUR)
             embed.set_footer(text="Type `$new-chimp-wallet` to get a wallet with some welcome Chimp-coins")
@@ -127,7 +123,14 @@ class MusicModule(commands.Cog):
     
     @commands.command(name="skip")
     async def skip(self, ctx, *, name=None):
+        if ctx.voice_client is None:
+            embed = discord.Embed(title="No song is playing to skip", colour=COLOUR)
+            await ctx.send(embed=embed)
+            return
         if name is None:
+            msg = ctx.message.id
+            msg = await ctx.fetch_message(msg)
+            await msg.add_reaction("\U0001F44C")
             ctx.voice_client.stop()
         else:
             embed = discord.Embed(title=f"Added to skips: {name}", colour=COLOUR)
@@ -159,3 +162,7 @@ class MusicModule(commands.Cog):
                 embed = discord.Embed(title="You are not connected to a voice channel.", colour=COLOUR)
                 await ctx.send(embed=embed)
                 raise commands.CommandError("Author not connected to a voice channel.")
+    
+    @premium_play.after_invoke
+    async def persist_wallets(self, ctx):
+        await self.wallet.persist()
