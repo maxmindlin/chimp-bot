@@ -1,5 +1,8 @@
 import asyncio
+from dataclasses import dataclass, field
 from functools import partial
+from pydoc import describe
+from typing import Any
 
 import discord
 import youtube_dl
@@ -35,6 +38,11 @@ ffmpeg_options = {
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+@dataclass(order=True)
+class PrioritizedSong:
+    priority: int
+    item: Any=field(compare=False)
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
@@ -82,15 +90,23 @@ class MusicModule(commands.Cog):
     @tasks.loop()
     async def play_loop(self):
         self.next.clear()
-        (_, (ctx, url)) = await self.queue.get()
+        next = await self.queue.get()
+        (ctx, url) = next.item
         if url in self.skips:
             self.skips.remove(url)
             return
-        player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-        ctx.voice_client.play(player, after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set))
-        embed = discord.Embed(title="Now playing", description=player.title, colour=COLOUR)
-        await ctx.send(embed=embed)
-        await self.next.wait()
+
+        try:
+            player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+            ctx.voice_client.play(player, after=lambda _: self.bot.loop.call_soon_threadsafe(self.next.set))
+            embed = discord.Embed(title="Now playing", description=player.title, colour=COLOUR)
+            await ctx.send(embed=embed)
+        except Exception as e:
+            embed = discord.Embed(title="Error", description="error playing song", color=COLOUR)
+            await ctx.send(embed=embed)
+            print(f"Error playing {e}")
+        finally:
+            await self.next.wait()
         
     @play_loop.before_loop
     async def before_play_loop(self):
@@ -100,7 +116,7 @@ class MusicModule(commands.Cog):
     async def play(self, ctx, *, val):
         embed = discord.Embed(title="Added to queue", desciption=val, colour=COLOUR)
         await ctx.send(embed=embed)
-        await self.queue.put((10, (ctx, val)))
+        await self.queue.put(PrioritizedSong(10, (ctx, val)))
     
     @commands.command(name="p-play")
     async def premium_play(self, ctx, *, val):
@@ -108,13 +124,16 @@ class MusicModule(commands.Cog):
         player_name = ctx.author.name
         try:
             self.wallet.withdraw(user, PREMIUM_COST)
-            embed = discord.Embed(title=f"{player_name} paid to add to the premium queue", description=f"Sone: {val}", colour=COLOUR)
-            embed.set_footer(text="This song has been bumped to the front of the queue.")
+            embed = discord.Embed(
+                title="A premium play has been purchased",
+                description=f"Request: {val}",
+                colour=COLOUR)
+            embed.set_footer(text=f"{player_name} skipped the queue", icon_url=ctx.author.avatar_url)
             await ctx.send(embed=embed)
-            await self.queue.put((0, (ctx, val)))
+            await self.queue.put(PrioritizedSong(0, (ctx, val)))
         except NoWalletError:
             embed = discord.Embed(title=f"Cannot place bet", description=f"{player_name} does not have a Chimp-wallet yet!", color=COLOUR)
-            embed.set_footer(text="Type `$new-chimp-wallet` to get a wallet with some welcome Chimp-coins")
+            embed.set_footer(text="Type `$new-wallet` to get a wallet with some welcome Chimp-coins")
             await ctx.send(embed=embed)
         except InsufficientFundsError:
             embed = discord.Embed(title="You cannot afford a premium play!", colour=COLOUR)

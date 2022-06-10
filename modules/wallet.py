@@ -4,8 +4,7 @@ from os.path import exists
 from discord.ext import commands
 
 from modules.errors import InvalidCommandUsage
-
-from .embed import COLOUR
+from modules.embed import COLOUR
 
 WALLET_FILE = "wallets.txt"
 

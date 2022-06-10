@@ -102,14 +102,20 @@ class BettingModule(commands.Cog):
                 bet = Bet(player, player_name, outcome, amt)
                 self.wallet.withdraw(player, amt)
                 self.curr_bets[channel_id].add_bet(bet)
-                embed = discord.Embed(title=f"Bet placed by {player_name}: {bet.outcome} for {bet.amount}", color=COLOUR)
+                embed = discord.Embed(
+                    title=f"Bet placed by {player_name}",
+                    description=f"{bet.outcome} for {bet.amount}",
+                    color=COLOUR)
                 await ctx.send(embed=embed)
             except InvalidBet as e:
                 embed = discord.Embed(title="Invalid bet", description=e, color=COLOUR)
                 await ctx.send(embed=embed)
                 return
             except NoWalletError:
-                embed = discord.Embed(title=f"Cannot place bet: {player_name} does not have a Chimp-wallet yet!", color=COLOUR)
+                embed = discord.Embed(
+                    title="Cannot place bet",
+                    description=f"{player_name} does not have a Chimp-wallet yet!",
+                    color=COLOUR)
                 embed.set_footer(text="Type `$new-wallet` to get a wallet with some welcome Chimp-coins")
                 await ctx.send(embed=embed)
                 return
